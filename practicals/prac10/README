@@ -1,0 +1,16 @@
+The Flamingo package was developed by Ben Spencer in 2011:
+
+https://mistymountain.co.uk/flamingo/
+
+The differences between the current version of the software
+and the original tar file are:
+
+1) use of python2 instead of python at the top of the autotune script
+
+2) an updated version of the laplace3d example based on the current
+   laplace3d in Practical 3
+
+At some point it might be worth trying out this tool to convert
+python2 to python3:
+
+https://docs.python.org/3/library/2to3.html
