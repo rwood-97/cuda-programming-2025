@@ -12,9 +12,12 @@
 #SBATCH --job-name=prac1
 
 # use our reservation
-#SBATCH --reservation=gputraining202407
+#SBATCH --reservation=cuda2025
 
 module purge
 module load CUDA
+
+make clean
+make
 
 ./prac1a
