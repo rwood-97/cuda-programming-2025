@@ -6,3 +6,6 @@ See the following page for details of the coures:
 
 https://people.maths.ox.ac.uk/gilesm/cuda/
 
+Forked from:
+
+https://codeberg.org/flypig/cuda-programming
