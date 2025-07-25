@@ -62,7 +62,7 @@ void Gold_laplace3d(int NX, int NY, int NZ, float* h_u1, float* h_u2);
 
 int main(int argc, const char **argv){
 
-  int    NX=512, NY=512, NZ=512, REPEAT=20,
+  int    NX=1024, NY=1024, NZ=1024, REPEAT=20,
          BLOCK_X, BLOCK_Y, BLOCK_Z, bx, by, bz, i, j, k;
   float *h_u1, *h_u2, *h_foo, *d_u1, *d_u2, *d_foo;
   size_t ind, bytes = sizeof(float) * NX*NY*NZ;
@@ -112,18 +112,18 @@ int main(int argc, const char **argv){
   cudaEventElapsedTime(&milli, start, stop);
   printf("Copy u1 to device: %.1f (ms) \n\n", milli);
 
-  // Gold treatment
-
-  cudaEventRecord(start);
-  for (i=0; i<REPEAT; i++) {
-    Gold_laplace3d(NX, NY, NZ, h_u1, h_u2);
-    h_foo = h_u1; h_u1 = h_u2; h_u2 = h_foo;   // swap h_u1 and h_u2
-  }
-
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&milli, start, stop);
-  printf("%dx Gold_laplace3d: %.1f (ms) \n\n", REPEAT, milli);
+//  // Gold treatment
+//
+//  cudaEventRecord(start);
+//  for (i=0; i<REPEAT; i++) {
+//    Gold_laplace3d(NX, NY, NZ, h_u1, h_u2);
+//    h_foo = h_u1; h_u1 = h_u2; h_u2 = h_foo;   // swap h_u1 and h_u2
+//  }
+//
+//  cudaEventRecord(stop);
+//  cudaEventSynchronize(stop);
+//  cudaEventElapsedTime(&milli, start, stop);
+//  printf("%dx Gold_laplace3d: %.1f (ms) \n\n", REPEAT, milli);
   
   // Set up the execution configuration
 
@@ -164,20 +164,20 @@ int main(int argc, const char **argv){
   cudaEventElapsedTime(&milli, start, stop);
   printf("Copy u2 to host: %.1f (ms) \n\n", milli);
 
-  // error check
-
-  float err = 0.0;
-
-  for (k=0; k<NZ; k++) {
-    for (j=0; j<NY; j++) {
-      for (i=0; i<NX; i++) {
-        ind = i + j*NX + k*NX*NY;
-        err += (h_u1[ind]-h_u2[ind])*(h_u1[ind]-h_u2[ind]);
-      }
-    }
-  }
-
-  printf("rms error = %f \n",sqrt(err/ (float)(NX*NY*NZ)));
+//  // error check
+//
+//  float err = 0.0;
+//
+//  for (k=0; k<NZ; k++) {
+//    for (j=0; j<NY; j++) {
+//      for (i=0; i<NX; i++) {
+//        ind = i + j*NX + k*NX*NY;
+//        err += (h_u1[ind]-h_u2[ind])*(h_u1[ind]-h_u2[ind]);
+//      }
+//    }
+//  }
+//
+//  printf("rms error = %f \n",sqrt(err/ (float)(NX*NY*NZ)));
     
  // Release GPU and CPU memory
 

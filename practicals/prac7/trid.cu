@@ -13,9 +13,11 @@
 // kernel function
 ////////////////////////////////////////////////////////////////////////
 
+
 __global__ void GPU_trid(int NX, int niter, float *u)
 {
-  __shared__  float a[128], c[128], d[128];
+  __shared__ float c[128], d[128];
+  extern __shared__  float a[];
 
   float aa, bb, cc, dd, bbi, lambda=1.0;
   int   tid;

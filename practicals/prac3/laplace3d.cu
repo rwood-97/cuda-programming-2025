@@ -32,9 +32,9 @@ __global__ void GPU_laplace3d(int NX, int NY, int NZ,
   j    = threadIdx.y + blockIdx.y*blockDim.y;
   indg = i + j*NX;
 
-  IOFF = 1;
-  JOFF = NX;
-  KOFF = NX*NY;
+  IOFF = 1; 		// 0, 1, 2, 3 ..
+  JOFF = NX;		// 0, NX, 2NX, 3NX ..
+  KOFF = NX*NY;		// 0, NX*NX, 2NX*NX, 3NX*NX ..
 
   if ( i>=0 && i<=NX-1 && j>=0 && j<=NY-1 ) {
 
@@ -67,7 +67,7 @@ void Gold_laplace3d(int NX, int NY, int NZ, float* h_u1, float* h_u2);
 
 int main(int argc, const char **argv){
 
-  int     NX=512, NY=512, NZ=512, REPEAT=20,
+  int     NX=1024, NY=1024, NZ=1024, REPEAT=20,
           BLOCK_X, BLOCK_Y, bx, by, i, j, k;
   float  *h_u1, *h_u2, *h_foo, *d_u1, *d_u2, *d_foo;
   size_t ind, bytes = sizeof(float) * NX*NY*NZ;
@@ -117,23 +117,33 @@ int main(int argc, const char **argv){
   cudaEventElapsedTime(&milli, start, stop);
   printf("Copy u1 to device: %.1f (ms) \n\n", milli);
 
-  // Gold treatment
-
-  cudaEventRecord(start);
-  for (i=0; i<REPEAT; i++) {
-    Gold_laplace3d(NX, NY, NZ, h_u1, h_u2);
-    h_foo = h_u1; h_u1 = h_u2; h_u2 = h_foo;   // swap h_u1 and h_u2
-  }
-
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&milli, start, stop);
-  printf("%dx Gold_laplace3d: %.1f (ms) \n\n", REPEAT, milli);
+//  // Gold treatment
+//
+//  cudaEventRecord(start);
+//  for (i=0; i<REPEAT; i++) {
+//    Gold_laplace3d(NX, NY, NZ, h_u1, h_u2);
+//    h_foo = h_u1; h_u1 = h_u2; h_u2 = h_foo;   // swap h_u1 and h_u2
+//  }
+//
+//  cudaEventRecord(stop);
+//  cudaEventSynchronize(stop);
+//  cudaEventElapsedTime(&milli, start, stop);
+//  printf("%dx Gold_laplace3d: %.1f (ms) \n\n", REPEAT, milli);
   
   // Set up the execution configuration
+  BLOCK_X = 16;
+  BLOCK_Y = 16;
 
-  BLOCK_X = 16; // number of threads
-  BLOCK_Y = 16; // in each direction
+  if (argc > 1) {
+     int read = sscanf(argv[1], "%d", &BLOCK_X);
+  }
+ 
+  if (argc > 2) {
+    int read = sscanf(argv[2], "%d", &BLOCK_Y);
+  }
+  else {
+    BLOCK_Y = BLOCK_X;
+  }
   
   bx = 1 + (NX-1)/BLOCK_X; // number of blocks
   by = 1 + (NY-1)/BLOCK_Y; // in each direction
@@ -167,20 +177,20 @@ int main(int argc, const char **argv){
   cudaEventElapsedTime(&milli, start, stop);
   printf("Copy u2 to host: %.1f (ms) \n\n", milli);
 
-  // error check
-
-  float err = 0.0;
-
-  for (k=0; k<NZ; k++) {
-    for (j=0; j<NY; j++) {
-      for (i=0; i<NX; i++) {
-        ind = i + j*NX + k*NX*NY;
-        err += (h_u1[ind]-h_u2[ind])*(h_u1[ind]-h_u2[ind]);
-      }
-    }
-  }
-
-  printf("rms error = %f \n",sqrt(err/ (float)(NX*NY*NZ)));
+//  // error check
+//
+//  float err = 0.0;
+//
+//  for (k=0; k<NZ; k++) {
+//    for (j=0; j<NY; j++) {
+//      for (i=0; i<NX; i++) {
+//        ind = i + j*NX + k*NX*NY;
+//        err += (h_u1[ind]-h_u2[ind])*(h_u1[ind]-h_u2[ind]);
+//      }
+//    }
+//  }
+//
+//  printf("rms error = %f \n",sqrt(err/ (float)(NX*NY*NZ)));
     
  // Release GPU and CPU memory
 

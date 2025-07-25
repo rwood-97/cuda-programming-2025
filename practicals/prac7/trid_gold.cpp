@@ -1,7 +1,9 @@
 
 void gold_trid(int NX, int niter, float* u, float* c)
 {
-  float lambda=1.0f, aa, bb, cc, dd;
+  float lambda=1.0f, bb, cc, dd;
+  float a_i;
+  float	d[NX];
 
   for (int iter=0; iter<niter; iter++) {
 
@@ -9,37 +11,31 @@ void gold_trid(int NX, int niter, float* u, float* c)
     // forward pass
     //
 
-    aa   = -1.0f;
     bb   =  2.0f + lambda;
     cc   = -1.0f;
     dd   = lambda*u[0];
 
-    bb   = 1.0f / bb;
-    cc   = bb*cc;
-    dd   = bb*dd;
-    c[0] = cc;
-    u[0] = dd;
+    c[0]   = cc/bb;
+    d[0]   = dd/bb;
+    u[0] = d[0];
 
     for (int i=1; i<NX; i++) {
-      aa   = -1.0f;
-      bb   = 2.0f + lambda - aa*cc;
-      dd   = lambda*u[i] - aa*dd;
-      bb   = 1.0f/bb;
-      cc   = -bb;
-      dd   = bb*dd;
-      c[i] = cc;
-      u[i] = dd;
+      a_i = -1.0f;
+      bb   = 2.0f + lambda - a_i*c[i-1];
+      dd   = lambda*u[i] - a_i*u[i-1];
+      c[i]  = -1.0f/bb;
+      d[i] = dd/bb;
+      u[i] = d[i];
     }
 
     //
     // reverse pass
     //
 
-    u[NX-1] = dd;
+    u[NX-1] = d[NX-1];
 
     for (int i=NX-2; i>=0; i--) {
-      dd   = u[i] - c[i]*dd;
-      u[i] = dd;
+      u[i]   = u[i] - c[i]*u[i+1];
     }
   }
 }

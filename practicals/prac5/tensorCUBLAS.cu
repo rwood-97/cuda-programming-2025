@@ -12,7 +12,8 @@ void checkError(cublasStatus_t status){
     }
 }
 
-int main(void){
+
+int main(int argc, char **argv){
 
     // Variable to hold the status returned by cuBLAS.
     cublasStatus_t status;
@@ -27,10 +28,13 @@ int main(void){
 
     // Size of row or col in matrix (we will work with a square matrix).
     int n = 1024;
+    if (argc > 1) {
+      sscanf(argv[1], "%d", &n);
+    }
 
     // To get an accurate timing measurement we will run the same code
     // multiple times. Five times should be more than enough.
-    int num_reps = 5;
+    int num_reps = 3;
 
     // We will execute the sgemm operation.
     // C = alpha A * B + beta C
@@ -40,6 +44,7 @@ int main(void){
 
     // Declare a variable to hold out timings.
     float milliseconds = 0.0f;
+    float avg_milliseconds;
 
     // Declare two cuda events for timing.
     cudaEvent_t start, stop;
@@ -75,45 +80,45 @@ int main(void){
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    // Perform the matrix multiplication with Tensor Cores disabled.
-    // Here we are using CUBLAS_PEDANTIC_MATH to disable the tensor cores on Volta.
-    status = cublasSetMathMode(handle, CUBLAS_PEDANTIC_MATH);
-    checkError(status);
-
-    // Run the same code num_reps times to get a representative timing.
-    // Please read  https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-gemm
-    // to understand the input parameters to cublasSgemm().
-    for (int i = 0; i < num_reps; i++) {
-        cudaEventRecord(start);
-        checkError(status);
-        status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, n, n, &alpha, d_A, n, d_B, n, &beta, d_C, n);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
-        printf("Time for SGEMM without Tensor Cores: %f ms\n", milliseconds);
-    }
-
-    // Copy the result back to the host.
-    cudaMemcpy(h_C, d_C, n * n * sizeof(float), cudaMemcpyDeviceToHost);
-
-    // Check the result.
-    #pragma omp parallel for
-    for (int i = 0; i < n; i++) {
-        #pragma omp parallel for
-        for (int j = 0; j < n; j++) {
-            float expected = 0.0f;
-            #pragma omp parallel for reduction(+:expected)
-            for (int k = 0; k < n; k++) {
-                expected += h_A[k*n + j] * h_B[i*n + k];
-            }
-            // Check if the absolute difference of the cuBLAS output is within a small tolerance of the expected output.
-            if (fabs(h_C[i*n + j] - expected) > 1e-1) {
-               printf("Verification failed at index %d,%d! h_C[%d,%d] = %f, expected = %f\n", i, j, i, j, h_C[i*n + j], expected);
-               exit(-1);
-            }
-        }
-    }
-    printf("Verification passed!\n\n");
+//    // Perform the matrix multiplication with Tensor Cores disabled.
+//    // Here we are using CUBLAS_PEDANTIC_MATH to disable the tensor cores on Volta.
+//    status = cublasSetMathMode(handle, CUBLAS_PEDANTIC_MATH);
+//    checkError(status);
+//
+//    // Run the same code num_reps times to get a representative timing.
+//    // Please read  https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-gemm
+//    // to understand the input parameters to cublasSgemm().
+//    for (int i = 0; i < num_reps; i++) {
+//        cudaEventRecord(start);
+//        checkError(status);
+//        status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, n, n, &alpha, d_A, n, d_B, n, &beta, d_C, n);
+//        cudaEventRecord(stop);
+//        cudaEventSynchronize(stop);
+//        cudaEventElapsedTime(&milliseconds, start, stop);
+//        printf("Time for SGEMM without Tensor Cores: %f ms\n", milliseconds);
+//    }
+//
+//    // Copy the result back to the host.
+//    cudaMemcpy(h_C, d_C, n * n * sizeof(float), cudaMemcpyDeviceToHost);
+//
+//    // Check the result.
+//    #pragma omp parallel for
+//    for (int i = 0; i < n; i++) {
+//        #pragma omp parallel for
+//        for (int j = 0; j < n; j++) {
+//            float expected = 0.0f;
+//            #pragma omp parallel for reduction(+:expected)
+//            for (int k = 0; k < n; k++) {
+//                expected += h_A[k*n + j] * h_B[i*n + k];
+//            }
+//            // Check if the absolute difference of the cuBLAS output is within a small tolerance of the expected output.
+//            if (fabs(h_C[i*n + j] - expected) > 1e-1) {
+//               printf("Verification failed at index %d,%d! h_C[%d,%d] = %f, expected = %f\n", i, j, i, j, h_C[i*n + j], expected);
+//               exit(-1);
+//            }
+//        }
+//    }
+//    printf("Verification passed!\n\n");
 
     /****************************************************************************************************************************
                 This next section is exactly the same as the last, however this time we pass cublasSetMathMode()
@@ -127,6 +132,7 @@ int main(void){
 
     status = cublasSetMathMode(handle, CUBLAS_TF32_TENSOR_OP_MATH);
     checkError(status);
+    avg_milliseconds = 0.0f;
     for (int i = 0; i < num_reps; i++) {
         cudaEventRecord(start);
         checkError(status);
@@ -135,7 +141,11 @@ int main(void){
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
         printf("Timie for SGEMM with Tensor Cores and TF32 (Ampere and beyond): %f ms\n", milliseconds);
+        if (i > 1) {
+	  avg_milliseconds += milliseconds;
+	}
     }
+    avg_milliseconds /= (num_reps - 1);
 
     cudaMemcpy(h_C, d_C, n * n * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -156,6 +166,8 @@ int main(void){
     }
     printf("Verification passed!\n\n");
 
+    FILE *file = fopen("output.txt", "a");
+    fprintf(file, "Time for SGEMM with Tensor Cores and TF32 (Ampere and beyond), n=%d: %f\n", n, avg_milliseconds);
 
     /****************************************************************************************************************************
                 This next section uses both tensor cores and mixed precision for acceleration on the volta architecture.
@@ -195,6 +207,7 @@ int main(void){
     // Perform the matrix multiplication with Tensor Cores enabled and mixed precision
     status = cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH);
     checkError(status);
+    avg_milliseconds = 0.0f;
     for (int i = 0; i < num_reps; i++) {
         cudaEventRecord(start);
         status = cublasSgemmEx(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, n, n, &alpha, d_hA, CUDA_R_16F, n, d_hB, CUDA_R_16F, n, &beta, d_C, CUDA_R_32F, n);
@@ -203,7 +216,11 @@ int main(void){
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
         printf("Time for SGEMM with Tensor Cores and mixed precision (Volta): %f ms\n", milliseconds);
+        if (i > 1) {
+          avg_milliseconds += milliseconds;
+        }
     }
+    avg_milliseconds /= (num_reps - 1);
 
     // Copy the result back to the host
     cudaMemcpy(h_C, d_C, n * n * sizeof(float), cudaMemcpyDeviceToHost);
@@ -228,6 +245,7 @@ int main(void){
     }
     printf("Verification passed!\n\n");
 
+    fprintf(file, "Time for SGEMM with Tensor Cores and mixed precision (Volta), n=%d: %f\n", n, avg_milliseconds);
 
     // Clean up
     cublasDestroy(handle);
@@ -243,6 +261,8 @@ int main(void){
     cudaFree(d_hB);
     free(h_hA);
     free(h_hB);
+
+    fclose(file);
 
     return 0;
 }
